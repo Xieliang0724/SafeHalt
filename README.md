@@ -9,7 +9,7 @@
 
 - **项目名**：SCH_NET-RELAY（网络继电器控制板）
 - **实际主控**：GD32F407VG（LQFP100）
-- **工程基准**：STM32F407VGTx + STM32 HAL（GD32F407 与 STM32F407 引脚/寄存器兼容，代码直接跑在 GD32 上）
+- **工程基准**：Keil 工程器件已配置为 GD32F407VG（GigaDevice.GD32F4xx_DFP 3.0.3），代码仍基于 STM32 HAL（GD32F407 与 STM32F407 引脚/寄存器兼容，代码直接跑在 GD32 上）
 - **固件形态**：裸机超循环（无 RTOS），CubeMX 生成骨架 + 自研 BSP/应用层
 - **当前已实现功能**：
   - 双路急停输入 + 三态安全状态机（急停按下 → 急停释放 → 复位后正常运行）
@@ -262,3 +262,4 @@ typedef struct {
 | （首次盘点） | 通读全部源码，建立基线记录 | 尚未开始新需求开发 |
 | 2026-08-15 | 打通 Modbus 写输出链路（反向映射 reg 31~34/40~41 → 输出，钳位 0/1，当周期生效） | 见第 6 节、第 8.1 条 |
 | 2026-08-15 | 修复 Task_Init 时序（main 中先调 IO_Update 再 Task_Init） | 见第 8.2 条 |
+| 2026-08-15 | Keil 工程器件从 STM32F407VGTx 切换为 GD32F407VG（GigaDevice.GD32F4xx_DFP 3.0.3，本机已装），修复 Error #550；烧录算法改 GD32F4xx_1MB.FLM，SVD 改 GD32F4xx.svd | VS Code 开发环境搭建 |

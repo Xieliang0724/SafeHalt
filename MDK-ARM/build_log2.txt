@@ -1,0 +1,7 @@
+  
+Warning: *** SUPPORT EXPIRED, NEW PRODUCT SERIAL NUMBER REQUIRED ***
+         *** Running with Code Size Limit: 32K                   ***
+*** Using Compiler 'V5.06 update 7 (build 960)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
+Build target 'SCH_NET-RELAY'
+"SCH_NET-RELAY\SCH_NET-RELAY.axf" - 0 Error(s), 1 Warning(s).
+Build Time Elapsed:  00:00:01

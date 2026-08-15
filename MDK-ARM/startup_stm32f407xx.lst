@@ -849,12 +849,12 @@ interwork --depend=sch_net-relay\startup_stm32f407xx.d -osch_net-relay\startup_
 ARM Macro Assembler    Page 14 
 
 
-stm32f407xx.o -I.\RTE\_SCH_NET-RELAY -IC:\Users\qiang.fu\AppData\Local\Arm\Pack
-s\ARM\CMSIS\5.7.0\CMSIS\Core\Include -IC:\Users\qiang.fu\AppData\Local\Arm\Pack
-s\Keil\STM32F4xx_DFP\2.9.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include --predefin
-e="__UVISION_VERSION SETA 533" --predefine="_RTE_ SETA 1" --predefine="STM32F40
-7xx SETA 1" --predefine="_RTE_ SETA 1" --list=startup_stm32f407xx.lst startup_s
-tm32f407xx.s
+stm32f407xx.o -I.\RTE\_SCH_NET-RELAY -IC:\Users\Administrator\AppData\Local\Arm
+\Packs\ARM\CMSIS\5.7.0\CMSIS\Core\Include -IC:\Users\Administrator\AppData\Loca
+l\Arm\Packs\GigaDevice\GD32F4xx_DFP\3.0.3\Device\F4XX\Include --predefine="__UV
+ISION_VERSION SETA 533" --predefine="_RTE_ SETA 1" --predefine="GD32F407 SETA 1
+" --predefine="_RTE_ SETA 1" --list=startup_stm32f407xx.lst startup_stm32f407xx
+.s
 
 
 
