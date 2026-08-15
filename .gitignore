@@ -3,6 +3,7 @@
 # ============================================================
 MDK-ARM/SCH_NET-RELAY/
 MDK-ARM/*.build_log.htm
+MDK-ARM/build_log*.txt
 MDK-ARM/ExtDll.iex
 MDK-ARM/*.uvguix.*
 MDK-ARM/*.uvoptx
