@@ -1,0 +1,31 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Keil: 编译 (Build)",
+            "type": "shell",
+            "command": "C:/Keil_v5/UV4/UV4.exe",
+            "args": [
+                "-b",
+                "${workspaceFolder}/MDK-ARM/SCH_NET-RELAY.uvprojx",
+                "-o",
+                "${workspaceFolder}/MDK-ARM/build_log.txt"
+            ],
+            "group": { "kind": "build", "isDefault": true },
+            "problemMatcher": []
+        },
+        {
+            "label": "Keil: 编译并烧录 (Build+Flash)",
+            "type": "shell",
+            "command": "C:/Keil_v5/UV4/UV4.exe",
+            "args": [
+                "-f",
+                "${workspaceFolder}/MDK-ARM/SCH_NET-RELAY.uvprojx",
+                "-o",
+                "${workspaceFolder}/MDK-ARM/build_log.txt"
+            ],
+            "group": "build",
+            "problemMatcher": []
+        }
+    ]
+}
