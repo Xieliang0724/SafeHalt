@@ -31,20 +31,23 @@ static void IO_InputUpdate(void)
  * 在主循环最后面调用一次，集中管理所有输出映射
  *
  * LED 引脚映射：
- *   led.working — PE4
- *   led.network — PE3
- *   led.system  — PE2
+ *   led.working  — PE5（高=亮，500ms 闪烁）
+ *   led.network  — PE3（低=亮，无人赋值→恒灭）
+ *   led.system   — PE2=stop_NO 镜像(高=亮)，PE4=stop_OFF 反相(高=亮)
  */
 static void IO_OutputUpdate(void)
 {
-    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_4,
-        g_io.output.led.working ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2,
+        g_io.output.led.system ? GPIO_PIN_SET : GPIO_PIN_RESET);
 
     HAL_GPIO_WritePin(GPIOE, GPIO_PIN_3,
         g_io.output.led.network ? GPIO_PIN_RESET : GPIO_PIN_SET);
 
-    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_2,
-        g_io.output.led.system  ? GPIO_PIN_SET : GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_4,
+        (g_io.output.led.system ^ 1u) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+
+    HAL_GPIO_WritePin(GPIOE, GPIO_PIN_5,
+        g_io.output.led.working ? GPIO_PIN_SET : GPIO_PIN_RESET);
 	
     HAL_GPIO_WritePin(GPIOD, GPIO_PIN_9,
         g_io.output.relay[0]  ? GPIO_PIN_SET : GPIO_PIN_RESET);

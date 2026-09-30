@@ -4,6 +4,8 @@
 /* ---- DMA 收发缓冲区 ---- */
 uint8_t  mb_uart1_rx_buf[MB_BUF_SIZE];
 uint8_t  mb_uart1_tx_buf[MB_BUF_SIZE];
+uint8_t  mb_uart2_rx_buf[MB_BUF_SIZE];
+uint8_t  mb_uart2_tx_buf[MB_BUF_SIZE];
 uint8_t  mb_uart3_rx_buf[MB_BUF_SIZE];
 uint8_t  mb_uart3_tx_buf[MB_BUF_SIZE];
 
@@ -12,6 +14,7 @@ uint16_t mb_holding_regs[MODBUS_REG_NUM];
 
 /* ---- 各端口独立的帧间隔计时器（单位：ms，由 TIM2 递减）---- */
 static volatile uint32_t mb_uart1_silence = 0;
+static volatile uint32_t mb_uart2_silence = 0;
 static volatile uint32_t mb_uart3_silence = 0;
 
 /* ================================================================
@@ -140,6 +143,8 @@ void Modbus_Init(void)
 
     __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
     HAL_UART_Receive_DMA(&huart1, mb_uart1_rx_buf, MB_BUF_SIZE);
+__HAL_UART_ENABLE_IT(&huart2, UART_IT_IDLE);
+HAL_UART_Receive_DMA(&huart2, mb_uart2_rx_buf, MB_BUF_SIZE);
 
     __HAL_UART_ENABLE_IT(&huart3, UART_IT_IDLE);
     HAL_UART_Receive_DMA(&huart3, mb_uart3_rx_buf, MB_BUF_SIZE);
@@ -153,6 +158,7 @@ void Modbus_Init(void)
 void Modbus_TimerTick(void)
 {
     if (mb_uart1_silence > 0) mb_uart1_silence--;
+if (mb_uart2_silence > 0) mb_uart2_silence--;
     if (mb_uart3_silence > 0) mb_uart3_silence--;
 }
 
@@ -173,6 +179,9 @@ void Modbus_RxHandler(UART_HandleTypeDef *huart, uint8_t *rx_buf, uint16_t len)
     if (huart->Instance == USART1) {
         tx_buf  = mb_uart1_tx_buf;
         silence = &mb_uart1_silence;
+    } else if (huart->Instance == USART2) {
+        tx_buf  = mb_uart2_tx_buf;
+        silence = &mb_uart2_silence;
     } else {
         tx_buf  = mb_uart3_tx_buf;
         silence = &mb_uart3_silence;

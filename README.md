@@ -83,6 +83,43 @@ SCH_NET-RELAY/
 | Drivers/BSP | bsp_modbus.c bsp_W25Q128.c |
 | Tools | crc.c |
 
+### 3.4 macOS 开发（VS Code + Keil Studio + CMSIS-Toolbox）
+
+> 不依赖 Windows/Keil MDK，整套工具链在 macOS 上原生编译、烧录、调试。
+
+**工具链（本机已配置）**
+
+- **IDE**：VS Code + Arm Keil Studio 扩展（`Arm.keil-studio-pack`，含 CMSIS Solution / CMSIS Debugger / Environment Manager / clangd）
+- **工程**：CMSIS-Toolbox csolution（`csolution` / `cbuild` / `cpackget` 2.15.0）
+- **编译器**：Arm GNU Toolchain 15.2.1（`arm-none-eabi-gcc`，带 newlib）
+- **调试/烧录**：SEGGER J-Link 软件 V9.80（`JLinkExe` / `JLinkGDBServer`）+ `arm-none-eabi-gdb`
+- **器件包**：`GigaDevice.GD32F4xx_DFP 3.0.3`、`Keil.STM32F4xx_DFP 3.1.1`
+
+**工程文件（csolution）**
+
+| 文件 | 说明 |
+|---|---|
+| `SCH_NET-RELAY.csolution.yml` | solution：目标 GD32F407VG，GCC，Debug 构建 |
+| `SCH_NET-RELAY.cproject.yml` | source groups / 包含路径 / 宏 / 链接器 |
+| `SCH_NET-RELAY.ld` | GNU 链接脚本（FLASH 1MB / RAM 128KB / CCM 64KB，含 `.RamFunc`） |
+| `build.sh` | 编译（导出工具链环境 + `cbuild`） |
+| `flash.sh` | J-Link 烧录 HEX |
+| `debug.sh` | J-Link GDB Server + GDB 调试 |
+
+**操作**
+
+```bash
+./build.sh      # 编译，产物在 out/SCH_NET-RELAY/Debug/Debug/
+./flash.sh      # 烧录（需先 build），J-Link 按 STM32F407 算法写 GD32F407VG
+./debug.sh      # GDB 调试（也可在 VS Code 用 Keil Studio CMSIS view 调试）
+```
+
+**说明**
+
+- 目标器件为 GD32F407VG；烧录/调试按 STM32F407 处理（寄存器/Flash 兼容，实测 IDCODE 低 12 位 `0x413`）。
+- 编译器用开源的 Arm GNU GCC，免许可证；若要换 Arm Compiler 6（AC6），需激活免费 MDK-Community 许可证。
+- 启动文件复用仓库内 STM32F4xx 的 GCC 版 `startup_stm32f407xx.s`。
+
 ---
 
 ## 4. 软件架构
@@ -259,6 +296,7 @@ typedef struct {
 
 | 日期 | 变更内容 | 备注 |
 |---|---|---|
+| 2026-09-30 | 新增 macOS 构建（csolution/CMSIS-Toolbox + ARM GNU GCC）；USART2 作为第三路 Modbus RTU（ESP32 接 PA2/PA3）；LED 映射改 PE2/PE3/PE4/PE5；新增 build/flash/debug 脚本与硬件资源文档 | 版本维护 |
 | （首次盘点） | 通读全部源码，建立基线记录 | 尚未开始新需求开发 |
 | 2026-08-15 | 打通 Modbus 写输出链路（反向映射 reg 31~34/40~41 → 输出，钳位 0/1，当周期生效） | 见第 6 节、第 8.1 条 |
 | 2026-08-15 | 修复 Task_Init 时序（main 中先调 IO_Update 再 Task_Init） | 见第 8.2 条 |

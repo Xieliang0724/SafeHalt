@@ -31,6 +31,8 @@ extern "C" {
 /* DMA 收发缓冲区（供中断文件引用）*/
 extern uint8_t  mb_uart1_rx_buf[MB_BUF_SIZE];
 extern uint8_t  mb_uart1_tx_buf[MB_BUF_SIZE];
+extern uint8_t  mb_uart2_rx_buf[MB_BUF_SIZE];
+extern uint8_t  mb_uart2_tx_buf[MB_BUF_SIZE];
 extern uint8_t  mb_uart3_rx_buf[MB_BUF_SIZE];
 extern uint8_t  mb_uart3_tx_buf[MB_BUF_SIZE];
 

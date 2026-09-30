@@ -11,7 +11,10 @@
                 "-o",
                 "${workspaceFolder}/MDK-ARM/build_log.txt"
             ],
-            "group": { "kind": "build", "isDefault": true },
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
             "problemMatcher": []
         },
         {
@@ -25,6 +28,89 @@
                 "${workspaceFolder}/MDK-ARM/build_log.txt"
             ],
             "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "CMSIS Erase",
+            "type": "shell",
+            "command": [
+                "echo Connect > .cmd.jlink &&",
+                "echo Erase >> .cmd.jlink &&",
+                "echo Exit >> .cmd.jlink &&",
+                "JLinkExe -device GD32F407VG -if swd -speed 4000 -commandfile .cmd.jlink"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/",
+                "shell": {
+                    "executable": "/bin/bash",
+                    "args": [
+                        "-c"
+                    ]
+                }
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "CMSIS Load",
+            "type": "shell",
+            "command": [
+                "echo Connect > .cmd.jlink &&",
+                "echo LoadFile \"out/SCH_NET-RELAY/Debug/Debug/SCH_NET-RELAY.elf\" >> .cmd.jlink &&",
+                "echo Exit >> .cmd.jlink &&",
+                "JLinkExe -device GD32F407VG -if swd -speed 4000 -commandfile .cmd.jlink"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/",
+                "shell": {
+                    "executable": "/bin/bash",
+                    "args": [
+                        "-c"
+                    ]
+                }
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "CMSIS Run",
+            "type": "shell",
+            "command": "JLinkGDBServerCL",
+            "options": {
+                "cwd": "${workspaceFolder}/",
+                "shell": {
+                    "executable": "/bin/bash",
+                    "args": [
+                        "-c"
+                    ]
+                }
+            },
+            "args": [
+                "-device",
+                "GD32F407VG",
+                "-endian",
+                "little",
+                "-if",
+                "swd",
+                "-speed",
+                "4000",
+                "-nohalt",
+                "-noir",
+                "-nogui",
+                "-localhostonly",
+                "-silent",
+                "-port",
+                "3333",
+                "-TelnetPort",
+                "4444"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "CMSIS Load+Run",
+            "dependsOn": [
+                "CMSIS Load",
+                "CMSIS Run"
+            ],
+            "dependsOrder": "sequence",
             "problemMatcher": []
         }
     ]

@@ -24,3 +24,19 @@ Desktop.ini
 .DS_Store
 *.bak
 *~
+
+# ============================================================
+# CMSIS-Toolbox (Keil Studio / csolution) build artifacts
+# ============================================================
+out/
+tmp/
+*.cbuild-idx.yml
+*.cbuild-pack.yml
+.vscode/settings.json
+
+# ============================================================
+# Keil Studio / CMSIS-Toolbox 自动生成的本地文件
+# ============================================================
+.clangd
+.cmd.jlink
+.cmsis/

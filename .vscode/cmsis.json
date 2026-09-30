@@ -1,0 +1,9 @@
+{
+    "targetSet": {
+        "SCH_NET-RELAY": {
+            "activeTargetType": "Debug"
+        }
+    },
+    "activeSolution": "../SCH_NET-RELAY.csolution.yml",
+    "activeTarget": "Debug"
+}

@@ -26,9 +26,9 @@ typedef struct {
  * 硬件引脚映射由 io_logic.c 负责
  * ================================================================ */
 typedef struct {
-    uint8_t working;    /* 工况指示灯 — PE4 */
-    uint8_t network;    /* 网络指示灯 — PE3 */
-    uint8_t system;     /* 系统指示灯 — PE2 */
+    uint8_t working;    /* working 灯 — PE5（高=亮，500ms 闪烁） */
+    uint8_t network;    /* network 灯 — PE3（低=亮，无人赋值→恒灭） */
+    uint8_t system;     /* 正常/系统状态：PE2=stop_NO 镜像(高=亮)，PE4=stop_OFF 反相(高=亮) */
     /* 后续在此添加更多指示灯 */
 } LED_t;
 
