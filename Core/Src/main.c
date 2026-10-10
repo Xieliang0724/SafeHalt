@@ -212,6 +212,7 @@ static char    net_gw[16]   = "";
 static char    net_ap[8]    = "UNKNOWN";
 static uint32_t net_port    = 0;
 static int      net_rssi    = 0;
+static char     net_client[16] = "";
 
 /* 每秒发送一次 GD 状态日志（急停/按钮/指示灯/网络信息） */
 static void Send_Status(void)
@@ -229,10 +230,10 @@ static void Send_Status(void)
         uint8_t po = (uint8_t)(g_io.output.PNP_out[0] | (g_io.output.PNP_out[1]<<1) |
                                (g_io.output.PNP_out[2]<<2) | (g_io.output.PNP_out[3]<<3));
         snprintf(status_buf, sizeof(status_buf),
-"[GD] st=%s e1=%d e2=%d rst=%d btn=%02X po=%02X led=%d%d%d sta=%s ssid=%s ip=%s gw=%s rssi=%d ap=%s port=%lu\r\n",
+"[GD] st=%s e1=%d e2=%d rst=%d btn=%02X po=%02X led=%d%d%d sta=%s ssid=%s ip=%s gw=%s rssi=%d ap=%s port=%lu client=%s\r\n",
             st, g_io.input.estop1, g_io.input.estop2, g_io.input.reset, pnp, po,
             g_io.output.led.system, g_io.output.led.working, g_io.output.led.network,
-            net_sta, net_ssid, net_ip, net_gw, net_rssi, net_ap, (unsigned long)net_port);
+            net_sta, net_ssid, net_ip, net_gw, net_rssi, net_ap, (unsigned long)net_port, net_client);
         SWUART_Send((const uint8_t*)status_buf, strlen(status_buf));
     }
 }
@@ -253,11 +254,11 @@ void Modem_QueueLog(const uint8_t *buf, uint16_t len)
 static void Parse_Net(const char *line)
 {
     if (strncmp(line, "[NET]", 5) != 0) return;
-    char sta[12]="", ssid[32]="", ip[16]="", gw[16]="", ap[8]="";
+    char sta[12]="", ssid[32]="", ip[16]="", gw[16]="", ap[8]="", client[16]="";
     int rssi = 0;
     unsigned port = 0;
-    if (sscanf(line, "[NET] sta=%11s ssid=%31s ip=%15s gw=%15s rssi=%d ap=%7s port=%u",
-               sta, ssid, ip, gw, &rssi, ap, &port) == 7) {
+    if (sscanf(line, "[NET] sta=%11s ssid=%31s ip=%15s gw=%15s rssi=%d ap=%7s port=%u client=%15s",
+               sta, ssid, ip, gw, &rssi, ap, &port, client) == 8) {
         strncpy(net_sta,  sta,  sizeof(net_sta)-1);
         strncpy(net_ssid, ssid, sizeof(net_ssid)-1);
         strncpy(net_ip,   ip,   sizeof(net_ip)-1);
@@ -265,6 +266,7 @@ static void Parse_Net(const char *line)
         strncpy(net_ap,   ap,   sizeof(net_ap)-1);
         net_port = port;
         net_rssi = rssi;
+        strncpy(net_client, client, sizeof(net_client)-1);
     }
 }
 
