@@ -35,9 +35,12 @@ extern uint8_t  mb_uart2_rx_buf[MB_BUF_SIZE];
 extern uint8_t  mb_uart2_tx_buf[MB_BUF_SIZE];
 extern uint8_t  mb_uart3_rx_buf[MB_BUF_SIZE];
 extern uint8_t  mb_uart3_tx_buf[MB_BUF_SIZE];
+extern uint8_t  mb_uart4_rx_buf[MB_BUF_SIZE];
+extern uint8_t  mb_uart4_tx_buf[MB_BUF_SIZE];
 
 /* 保持寄存器表（供应用层读写）*/
 extern uint16_t mb_holding_regs[MODBUS_REG_NUM];
+extern volatile uint32_t mb_req_count;   /* Modbus 从站累计处理请求数 */
 
 /* 公开接口 */
 void Modbus_Init(void);

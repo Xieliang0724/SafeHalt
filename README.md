@@ -17,6 +17,7 @@
   - 双串口（USART1 / USART3）Modbus RTU 从站，支持 03/06/10 功能码
   - W25Q128 外部 Flash（软件 SPI），掉电保持参数存取 + 上电自检
   - 报警管理（急停双路不一致检测、Flash 故障标志）
+  - **PA0 / PA1 软件模拟串口**（以太网模组/日志口）：PA0=TX、PA1=RX，用 TIM5/TIM4 定时器逐位模拟 115200 UART。PA0 输出 GD 状态日志（每秒一次，含急停/按钮/指示灯）与 ESP32 网络信息（解析 `[NET]` 行：sta/ssid/ip/gw/rssi/ap/port），PA1 中断接收模组数据。
 
 ---
 

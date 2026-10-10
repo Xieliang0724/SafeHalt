@@ -21,6 +21,7 @@ project:
         - file: Core/Src/stm32f4xx_hal_msp.c
         - file: Core/Src/system_stm32f4xx.c
         - file: Drivers/BSP/src/bsp_modbus.c
+        - file: Drivers/BSP/src/bsp_modbus_master.c
         - file: Drivers/BSP/src/bsp_W25Q128.c
         - file: Tools/src/crc.c
         - file: Task/src/task.c

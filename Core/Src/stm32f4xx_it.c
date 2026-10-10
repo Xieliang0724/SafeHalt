@@ -24,6 +24,10 @@
 /* USER CODE BEGIN Includes */
 #include "bsp_modbus.h"
 #include "task.h"
+#include <string.h>
+
+/* 软串口日志队列（main.c） */
+extern void Modem_QueueLog(const uint8_t *buf, uint16_t len);
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -63,12 +67,15 @@ extern DMA_HandleTypeDef hdma_usart2_rx;
 extern DMA_HandleTypeDef hdma_usart1_tx;
 extern DMA_HandleTypeDef hdma_usart2_tx;
 extern DMA_HandleTypeDef hdma_usart3_rx;
+extern DMA_HandleTypeDef hdma_uart4_rx;
 extern DMA_HandleTypeDef hdma_usart3_tx;
+extern DMA_HandleTypeDef hdma_uart4_tx;
 extern DMA_HandleTypeDef hdma_usart6_rx;
 extern DMA_HandleTypeDef hdma_usart6_tx;
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
 extern UART_HandleTypeDef huart3;
+extern UART_HandleTypeDef huart4;
 extern UART_HandleTypeDef huart6;
 /* USER CODE BEGIN EV */
 
@@ -264,6 +271,16 @@ void DMA1_Stream6_IRQHandler(void)
   HAL_DMA_IRQHandler(&hdma_usart2_tx);
 }
 
+void DMA1_Stream2_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler(&hdma_uart4_rx);
+}
+
+void DMA1_Stream4_IRQHandler(void)
+{
+  HAL_DMA_IRQHandler(&hdma_uart4_tx);
+}
+
 /**
   * @brief This function handles DMA1 stream3 global interrupt.
   */
@@ -305,7 +322,10 @@ void USART1_IRQHandler(void)
     if (len > 0)
     {
       HAL_UART_DMAStop(&huart1);
-      Modbus_RxHandler(&huart1, mb_uart1_rx_buf, len);
+      /* 先拷到独立发送缓冲，避免与下面马上重新启动的 USART1 接收 DMA 共用同一块内存 */
+      memcpy(mb_uart1_tx_buf, mb_uart1_rx_buf, len);
+      /* 转发 ESP32 日志到 USART3（以太网日志输出）*/
+      Modem_QueueLog(mb_uart1_tx_buf, len);   /* 转到软串口 PA0 日志输出 */
     }
   }
   /* USER CODE END USART1_IRQn 0 */
@@ -313,6 +333,7 @@ void USART1_IRQHandler(void)
   /* USER CODE BEGIN USART1_IRQn 1 */
 
   /* USER CODE END USART1_IRQn 1 */
+  HAL_UART_Receive_DMA(&huart1, mb_uart1_rx_buf, MB_BUF_SIZE);
 }
 
 void USART2_IRQHandler(void)
@@ -330,6 +351,23 @@ void USART2_IRQHandler(void)
   HAL_UART_IRQHandler(&huart2);
 }
 
+void UART4_IRQHandler(void)
+{
+  /* USER CODE BEGIN UART4_IRQn 0 */
+  if (__HAL_UART_GET_FLAG(&huart4, UART_FLAG_IDLE))
+{
+    __HAL_UART_CLEAR_IDLEFLAG(&huart4);
+    uint16_t len = MB_BUF_SIZE - __HAL_DMA_GET_COUNTER(huart4.hdmarx);
+    if (len > 0)
+{
+      HAL_UART_DMAStop(&huart4);
+      Modbus_RxHandler(&huart4, mb_uart4_rx_buf, len);
+}
+}
+  /* USER CODE END UART4_IRQn 0 */
+  HAL_UART_IRQHandler(&huart4);
+}
+
 /**
   * @brief This function handles USART3 global interrupt.
   */
@@ -343,7 +381,6 @@ void USART3_IRQHandler(void)
     if (len > 0)
     {
       HAL_UART_DMAStop(&huart3);
-      Modbus_RxHandler(&huart3, mb_uart3_rx_buf, len);
     }
   }
   /* USER CODE END USART3_IRQn 0 */

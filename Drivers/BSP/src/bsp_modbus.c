@@ -8,14 +8,18 @@ uint8_t  mb_uart2_rx_buf[MB_BUF_SIZE];
 uint8_t  mb_uart2_tx_buf[MB_BUF_SIZE];
 uint8_t  mb_uart3_rx_buf[MB_BUF_SIZE];
 uint8_t  mb_uart3_tx_buf[MB_BUF_SIZE];
+uint8_t  mb_uart4_rx_buf[MB_BUF_SIZE];
+uint8_t  mb_uart4_tx_buf[MB_BUF_SIZE];
 
 /* ---- 保持寄存器表 ---- */
 uint16_t mb_holding_regs[MODBUS_REG_NUM];
+volatile uint32_t mb_req_count = 0;   /* Modbus 从站累计处理请求数 */
 
 /* ---- 各端口独立的帧间隔计时器（单位：ms，由 TIM2 递减）---- */
 static volatile uint32_t mb_uart1_silence = 0;
 static volatile uint32_t mb_uart2_silence = 0;
 static volatile uint32_t mb_uart3_silence = 0;
+static volatile uint32_t mb_uart4_silence = 0;
 
 /* ================================================================
  * 内部辅助函数
@@ -141,13 +145,10 @@ void Modbus_Init(void)
 
     HAL_TIM_Base_Start_IT(&htim2);
 
-    __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
-    HAL_UART_Receive_DMA(&huart1, mb_uart1_rx_buf, MB_BUF_SIZE);
-__HAL_UART_ENABLE_IT(&huart2, UART_IT_IDLE);
-HAL_UART_Receive_DMA(&huart2, mb_uart2_rx_buf, MB_BUF_SIZE);
-
-    __HAL_UART_ENABLE_IT(&huart3, UART_IT_IDLE);
-    HAL_UART_Receive_DMA(&huart3, mb_uart3_rx_buf, MB_BUF_SIZE);
+    __HAL_UART_ENABLE_IT(&huart2, UART_IT_IDLE);
+    HAL_UART_Receive_DMA(&huart2, mb_uart2_rx_buf, MB_BUF_SIZE);
+    __HAL_UART_ENABLE_IT(&huart4, UART_IT_IDLE);
+    HAL_UART_Receive_DMA(&huart4, mb_uart4_rx_buf, MB_BUF_SIZE);
 }
 
 /**
@@ -160,6 +161,7 @@ void Modbus_TimerTick(void)
     if (mb_uart1_silence > 0) mb_uart1_silence--;
 if (mb_uart2_silence > 0) mb_uart2_silence--;
     if (mb_uart3_silence > 0) mb_uart3_silence--;
+if (mb_uart4_silence > 0) mb_uart4_silence--;
 }
 
 /**
@@ -176,12 +178,12 @@ void Modbus_RxHandler(UART_HandleTypeDef *huart, uint8_t *rx_buf, uint16_t len)
     uint8_t           *tx_buf;
     volatile uint32_t *silence;
 
-    if (huart->Instance == USART1) {
-        tx_buf  = mb_uart1_tx_buf;
-        silence = &mb_uart1_silence;
-    } else if (huart->Instance == USART2) {
+    if (huart->Instance == USART2) {
         tx_buf  = mb_uart2_tx_buf;
         silence = &mb_uart2_silence;
+    } else if (huart->Instance == UART4) {
+        tx_buf  = mb_uart4_tx_buf;
+        silence = &mb_uart4_silence;
     } else {
         tx_buf  = mb_uart3_tx_buf;
         silence = &mb_uart3_silence;
@@ -197,6 +199,7 @@ void Modbus_RxHandler(UART_HandleTypeDef *huart, uint8_t *rx_buf, uint16_t len)
             uint16_t crc_recv = (uint16_t)rx_buf[len - 2] |
                                 ((uint16_t)rx_buf[len - 1] << 8);
             if (CRC16_Modbus(rx_buf, len - 2) == crc_recv) {
+                mb_req_count++;
                 switch (rx_buf[1]) {
                     case MB_FC_READ_HOLDING_REGS:
                         tx_len = mb_fc03(rx_buf, len, tx_buf);
