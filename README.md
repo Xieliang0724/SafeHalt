@@ -1,7 +1,7 @@
 # SCH_NET-RELAY 项目记录
 
 > 本文档用于记录项目当前状态，作为后续开发的需求整理基线。
-> 最后更新：首次盘点（通读全部源码后整理）
+> 最后更新：2026-10-18（发布版本 v1.0.2）
 
 ---
 
@@ -14,7 +14,9 @@
 - **当前已实现功能**：
   - 双路急停输入 + 三态安全状态机（急停按下 → 急停释放 → 复位后正常运行）
   - 8 路 PNP 输入、4 路继电器输出、4 路 PNP 输出、3 颗 LED
-  - 双串口（USART1 / USART3）Modbus RTU 从站，支持 03/06/10 功能码
+  - 双串口（USART2 / UART4）Modbus RTU 从站，支持 03/06/10 功能码
+  - GD32 OTA：Bootloader 位于 `0x08000000`，App 位于 `0x08008000`，经 USART2（PA2/PA3）接收最多 64KB 固件
+  - USART1（PA9/PA10）接收 ESP32 网络日志并转发到 PA0 软件串口
   - W25Q128 外部 Flash（软件 SPI），掉电保持参数存取 + 上电自检
   - 报警管理（急停双路不一致检测、Flash 故障标志）
   - **PA0 / PA1 软件模拟串口**（以太网模组/日志口）：PA0=TX、PA1=RX，用 TIM5/TIM4 定时器逐位模拟 115200 UART。PA0 输出 GD 状态日志（每秒一次，含急停/按钮/指示灯）与 ESP32 网络信息（解析 `[NET]` 行：sta/ssid/ip/gw/rssi/ap/port），PA1 中断接收模组数据。
@@ -32,7 +34,7 @@
 | 调试 | ST-LINK（SWD：PA13/PA14） |
 | 外部晶振 | HSE 8MHz（PH0/PH1）、LSE 32.768kHz（PC14/PC15，已配未用） |
 | 外部存储 | W25Q128（16Mbit NOR Flash，软件 SPI） |
-| 上位机通信 | Modbus RTU × 2 路（USART1、USART3，115200 8N1） |
+| 上位机通信 | Modbus RTU × 2 路（USART2、UART4，115200 8N1） |
 
 ---
 
@@ -53,8 +55,11 @@
 ```
 SCH_NET-RELAY/
 ├── Core/
-│   ├── Inc/  main.h gpio.h dma.h tim.h usart.h stm32f4xx_it.h stm32f4xx_hal_conf.h
+│   ├── Inc/  main.h gpio.h dma.h tim.h usart.h ota_proto.h stm32f4xx_it.h stm32f4xx_hal_conf.h
 │   └── Src/  main.c gpio.c dma.c tim.c usart.c stm32f4xx_it.c stm32f4xx_hal_msp.c system_stm32f4xx.c
+├── Bootloader/                # GD32 OTA Bootloader（单独链接到 0x08000000）
+│   ├── boot.c
+│   └── boot.ld
 ├── Drivers/
 │   ├── STM32F4xx_HAL_Driver/   HAL 库源码
 │   ├── CMSIS/                  内核/设备支持
@@ -103,8 +108,11 @@ SCH_NET-RELAY/
 | `SCH_NET-RELAY.csolution.yml` | solution：目标 GD32F407VG，GCC，Debug 构建 |
 | `SCH_NET-RELAY.cproject.yml` | source groups / 包含路径 / 宏 / 链接器 |
 | `SCH_NET-RELAY.ld` | GNU 链接脚本（FLASH 1MB / RAM 128KB / CCM 64KB，含 `.RamFunc`） |
-| `build.sh` | 编译（导出工具链环境 + `cbuild`） |
-| `flash.sh` | J-Link 烧录 HEX |
+| `Bootloader/boot.csolution.yml` | 独立 Bootloader 工程，链接到 `0x08000000` |
+| `Bootloader/boot.ld` | Bootloader 32KB 链接脚本 |
+| `build.sh` | 依次构建 Bootloader 和 App |
+| `flash.sh` | J-Link 烧录 Bootloader 与 App |
+| `flash_boot.sh` | 仅更新 Bootloader |
 | `debug.sh` | J-Link GDB Server + GDB 调试 |
 
 **操作**
@@ -133,17 +141,21 @@ SCH_NET-RELAY/
 main()
  ├─ HAL_Init / SystemClock_Config
  ├─ MX_GPIO_Init / MX_DMA_Init / MX_TIM2_Init
- ├─ MX_USART1/3/6_UART_Init
- ├─ Alarm_Init / Modbus_Init / LED_Init / Task_Init / W25Q128_Init
+ ├─ MX_USART1/2/3/UART4/6_UART_Init
+ ├─ Alarm_Init / Modbus_Init / SWUART_Timer_Init / SWUART_Rx_Init / USART1 log DMA
+ ├─ LED_Init / IO_Update / Task_Init / W25Q128_Init
  └─ while(1)
-     ├─ IO_Update()      // 读输入 → 写输出 → Modbus 寄存器映射（状态→寄存器）
+     ├─ IO_Update()      // 读输入 → 写输出 → Modbus 寄存器映射
+     ├─ OTA trigger      // reg 49 = 0x4F54 时写状态并复位到 Bootloader
      ├─ Task_Update()    // 急停状态机
      ├─ Alarm_Update()   // 报警检测
      ├─ LED_Update()     // LED 逻辑
-     └─ Params_Update()  // 参数变更检测 → 写 Flash
+     ├─ Params_Update()  // 参数变更检测 → 写外部 Flash
+     ├─ Send_Status()    // 每秒输出 GD32 与 ESP32 网络状态
+     └─ Handle_Log()     // 解析 ESP32 [NET] 日志
 ```
 
-**注意**：`Task_Init()` 依赖在 IO_Update() 之后调用（需读急停电平），当前 main.c 中顺序为 Task_Init 在 W25Q128_Init 之前，而上电第一次 IO_Update 在循环里才执行——Task_Init 读到的 g_io.input 是初值（全 0），建议后续开发时在 main 中显式先调一次 IO_Update() 再 Task_Init()。
+`Task_Init()` 前会先调用一次 `IO_Update()`，确保急停初始状态来自真实引脚电平。
 
 ### 4.2 模块职责
 
@@ -165,11 +177,13 @@ main()
 | EXTI3（PB3） | 急停1 上升沿 | Task_EStopISR() → 状态机直接置 ESTOP_PRESSED |
 | EXTI4（PB4） | 急停2 上升沿 | Task_EStopISR() |
 | TIM2 | 1ms | Modbus_TimerTick()：递减各串口帧静默计时 |
-| USART1 | IDLE | 计算 DMA 接收长度 → Modbus_RxHandler() |
-| USART3 | IDLE | 同上 |
-| USART6 | — | 仅 HAL_UART_IRQHandler，**未启用 IDLE 处理**（预留） |
-| DMA1_Stream1/3 | USART3 RX/TX | HAL DMA 处理 |
-| DMA2_Stream1/2/6/7 | USART6 RX / USART1 RX / USART6 TX / USART1 TX | HAL DMA 处理 |
+| USART1 | IDLE | 接收 ESP32 `[NET]` 日志并转发至软件串口 |
+| USART2 | IDLE | Modbus RTU / OTA 触发，PA2/PA3 |
+| UART4 | IDLE | 第二路 Modbus RTU，PC10/PC11 |
+| USART3 / USART6 | — | 已初始化，当前应用逻辑未使用 |
+| DMA1 Stream2/4 | UART4 RX/TX | HAL DMA 处理 |
+| DMA1 Stream5/6 | USART2 RX/TX | HAL DMA 处理 |
+| DMA2 Stream2/7 | USART1 RX/TX | HAL DMA 处理 |
 
 所有业务中断优先级均配置为 0（抢占组 NVIC_PRIORITYGROUP_4），SysTick 为 15。
 
@@ -208,8 +222,10 @@ main()
 
 | 引脚 | 信号 |
 |---|---|
-| PA9/PA10 | USART1_TX/RX（Modbus 从站①） |
-| PC10/PC11 | USART3_TX/RX（Modbus 从站②） |
+| PA2/PA3 | USART2_TX/RX（Modbus 从站；Bootloader OTA） |
+| PC10/PC11 | UART4_TX/RX（Modbus 从站②） |
+| PA9/PA10 | USART1_TX/RX（ESP32 网络日志接收） |
+| PB10/PB11 | USART3_TX/RX（预留，当前应用逻辑未使用） |
 | PC6/PC7 | USART6_TX/RX（预留，未用） |
 | PA13/PA14 | SWDIO/SWCLK（调试） |
 | PD12 | W25Q128 CS（软件 SPI） |
@@ -227,7 +243,8 @@ main()
 - 支持功能码：**03** 读保持寄存器 / **06** 写单寄存器 / **10** 写多寄存器
 - 异常码：01 非法功能 / 02 非法地址 / 03 非法数据值
 - 帧间隔静默：4ms（TIM2 递减，115200bps 下 3.5T≈0.3ms）
-- 双口同时服务：USART1 + USART3，同一从站地址
+- 双口同时服务：USART2 + UART4，同一从站地址 `1`
+- ESP32 OTA 复用 USART2（PA2/PA3）；App 与 Bootloader 使用同一组引脚
 
 | 寄存器 | 含义 | 方向 |
 |---|---|---|
@@ -251,6 +268,16 @@ main()
 | 0xFFF000（最后 4KB 扇区） | 上电自检区（写入 "Geekplus" 并回读比对） |
 | 0xFFE000（倒数第二扇区） | 掉电保持参数区（Params_t，magic=0xA55A0001） |
 | 其余空间 | 空闲（可用于日志/配方等） |
+
+### GD32 内部 Flash（OTA）
+
+| 地址 / 区域 | 用途 |
+|---|---|
+| `0x08000000–0x08007FFF` | 32KB Bootloader |
+| `0x08008000` | App 起始地址 |
+| `0x080FF000` | OTA 状态结构（Sector 11 内） |
+
+OTA 镜像上限为 64KB。首次部署或更新完整固件时运行 `./flash.sh`；仅更新 Bootloader 时运行 `./flash_boot.sh`。
 
 参数结构（params.h）：
 
@@ -287,7 +314,7 @@ typedef struct {
    - 外设基本兼容，但 RCC 等寄存器存在细微差异，上新外设前建议用 GD32F4xx 官方库或至少做差异验证；
    - 若上以太网（项目名含 NET），GD32F407 自带 10/100M MAC，需 RMII PHY + LWIP，当前无任何以太网配置。
 
-7. **无版本控制**：目录无 .git，建议开发前初始化并清理 MDK-ARM 构建产物。
+7. **版本控制**：通过 Git tag 发布；当前版本与变更摘要见本 README 及 `CHANGELOG.md`，构建产物由 `.gitignore` 排除。
 
 8. **参数写入策略**：当前每次变更立即写 Flash（无防抖/合并），上位机高频改参时磨损风险需评估。
 
@@ -297,6 +324,7 @@ typedef struct {
 
 | 日期 | 变更内容 | 备注 |
 |---|---|---|
+| 2026-10-18 | v1.0.2：新增 32KB Bootloader 与 GD32 OTA；Bootloader/App 统一使用 USART2（PA2/PA3）；OTA 镜像上限 64KB；增加独立构建与烧录脚本 | 首次部署需烧录 Bootloader + App |
 | 2026-09-30 | 新增 macOS 构建（csolution/CMSIS-Toolbox + ARM GNU GCC）；USART2 作为第三路 Modbus RTU（ESP32 接 PA2/PA3）；LED 映射改 PE2/PE3/PE4/PE5；新增 build/flash/debug 脚本与硬件资源文档 | 版本维护 |
 | （首次盘点） | 通读全部源码，建立基线记录 | 尚未开始新需求开发 |
 | 2026-08-15 | 打通 Modbus 写输出链路（反向映射 reg 31~34/40~41 → 输出，钳位 0/1，当周期生效） | 见第 6 节、第 8.1 条 |

@@ -32,6 +32,7 @@
 #include "alarm.h"
 #include "bsp_W25Q128.h"
 #include "params.h"
+#include "ota_proto.h"
 #include <stdio.h>
 #include <string.h>
 /* USER CODE END Includes */
@@ -66,8 +67,11 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-static char    status_buf[160];
+static char    status_buf[256];
 static uint32_t status_last_tick = 0;
+
+/* 应用固件版本，用于 OTA 后从日志确认 */
+#define GD_APP_VERSION  "1.0.2"
 
 /* ---- 软件串口 TX：TIM5 按 115200 位周期产生中断，逐位输出到 PA0 ---- */
 #define SWUART_TX_PIN    GPIO_PIN_0
@@ -230,10 +234,11 @@ static void Send_Status(void)
         uint8_t po = (uint8_t)(g_io.output.PNP_out[0] | (g_io.output.PNP_out[1]<<1) |
                                (g_io.output.PNP_out[2]<<2) | (g_io.output.PNP_out[3]<<3));
         snprintf(status_buf, sizeof(status_buf),
-"[GD] st=%s e1=%d e2=%d rst=%d btn=%02X po=%02X led=%d%d%d sta=%s ssid=%s ip=%s gw=%s rssi=%d ap=%s port=%lu client=%s\r\n",
+"[GD] st=%s e1=%d e2=%d rst=%d btn=%02X po=%02X led=%d%d%d sta=%s ssid=%s ip=%s gw=%s rssi=%d ap=%s port=%lu client=%s ver=%s\r\n",
             st, g_io.input.estop1, g_io.input.estop2, g_io.input.reset, pnp, po,
             g_io.output.led.system, g_io.output.led.working, g_io.output.led.network,
-            net_sta, net_ssid, net_ip, net_gw, net_rssi, net_ap, (unsigned long)net_port, net_client);
+            net_sta, net_ssid, net_ip, net_gw, net_rssi, net_ap, (unsigned long)net_port, net_client,
+            GD_APP_VERSION);
         SWUART_Send((const uint8_t*)status_buf, strlen(status_buf));
     }
 }
@@ -280,6 +285,30 @@ static void Handle_Log(void)
     }
 }
 
+/* 触发 OTA：写状态区并复位到 bootloader */
+static void OTA_EnterUpdate(void)
+{
+    OtaStatus_t st;
+    st.magic    = OTA_STATE_MAGIC;
+    st.state    = OTA_STATE_UPDATE;
+    st.app_size = 0;
+    st.app_crc  = 0;
+    HAL_FLASH_Unlock();
+    FLASH_EraseInitTypeDef e; uint32_t err = 0;
+    e.TypeErase = FLASH_TYPEERASE_SECTORS;
+    e.Sector    = FLASH_SECTOR_11;
+    e.NbSectors = 1;
+    e.VoltageRange = FLASH_VOLTAGE_RANGE_3;
+    HAL_FLASHEx_Erase(&e, &err);
+    for (uint32_t i = 0; i < sizeof(st); i += 4) {
+        uint32_t w; memcpy(&w, (const uint8_t *)&st + i, 4);
+        HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, OTA_STATUS_ADDR + i, w);
+    }
+    HAL_FLASH_Lock();
+    NVIC_SystemReset();
+    while (1) { }
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -290,6 +319,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+  SCB->VTOR = OTA_APP_ADDR;   /* app 在 0x08008000，向量表指到这里 */
 
   /* USER CODE END 1 */
 
@@ -323,7 +353,7 @@ int main(void)
   Modbus_Init();
   SWUART_Timer_Init();
   SWUART_Rx_Init();
-  /* 启动 USART1 接收 ESP32 日志（转发到 USART3 以太网日志口）*/
+  /* 启动 USART1 接收 ESP32 网络日志，主循环转发到 PA0 软件串口 */
   __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
   HAL_UART_Receive_DMA(&huart1, mb_uart1_rx_buf, MB_BUF_SIZE);
   LED_Init();
@@ -337,6 +367,9 @@ int main(void)
   while (1)
   {
     IO_Update();
+    if (mb_holding_regs[OTA_TRIGGER_REG] == OTA_TRIGGER_MAGIC) {
+        OTA_EnterUpdate();
+    }
     Task_Update();
     Alarm_Update();
     LED_Update();

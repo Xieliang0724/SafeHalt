@@ -169,7 +169,7 @@ if (mb_uart4_silence > 0) mb_uart4_silence--;
  * 在 USART IDLE 中断中调用
  * 解析 Modbus RTU 帧，构造响应，通过 DMA 发送；无论是否响应都重启 DMA 接收
  *
- * @param huart   触发中断的串口句柄（huart1 或 huart3）
+ * @param huart   触发中断的串口句柄（huart2 或 huart4）
  * @param rx_buf  DMA 接收缓冲区指针
  * @param len     本帧实际接收字节数
  */

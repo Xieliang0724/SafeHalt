@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build SCH_NET-RELAY with CMSIS-Toolbox + Arm GNU Toolchain on macOS.
+# Build bootloader + app with CMSIS-Toolbox + Arm GNU Toolchain on macOS.
 set -euo pipefail
 
 export CMSIS_PACK_ROOT="$HOME/.cache/arm/packs"
@@ -8,4 +8,9 @@ export GCC_TOOLCHAIN_15_2_1="$ARM_GNU"
 export PATH="$HOME/cmsis-toolbox/cmsis-toolbox-darwin-arm64/bin:$ARM_GNU:$PATH"
 
 cd "$(dirname "$0")"
+
+echo "== 构建 bootloader =="
+(cd Bootloader && cbuild boot.csolution.yml "$@")
+
+echo "== 构建 app =="
 cbuild SCH_NET-RELAY.csolution.yml "$@"

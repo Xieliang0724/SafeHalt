@@ -1,0 +1,45 @@
+project:
+  packs:
+    - pack: GigaDevice::GD32F4xx_DFP
+  output:
+    base-name: boot
+    type:
+      - elf
+      - hex
+  groups:
+    - group: Startup
+      files:
+        - file: ../Drivers/CMSIS/Device/ST/STM32F4xx/Source/Templates/gcc/startup_stm32f407xx.s
+    - group: Application
+      files:
+        - file: boot.c
+        - file: ../Core/Src/system_stm32f4xx.c
+        - file: ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal.c
+        - file: ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cortex.c
+        - file: ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma.c
+        - file: ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma_ex.c
+        - file: ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash.c
+        - file: ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash_ex.c
+        - file: ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash_ramfunc.c
+        - file: ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc.c
+        - file: ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc_ex.c
+        - file: ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_gpio.c
+        - file: ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pwr.c
+        - file: ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pwr_ex.c
+        - file: ../Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.c
+  add-path:
+    - ../Core/Inc
+    - ../Drivers/STM32F4xx_HAL_Driver/Inc
+    - ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy
+    - ../Drivers/CMSIS/Device/ST/STM32F4xx/Include
+    - ../Drivers/CMSIS/Include
+  define:
+    - USE_HAL_DRIVER
+    - STM32F407xx
+  misc:
+    - for-compiler: GCC
+      Link:
+        - --specs=nano.specs
+        - --specs=nosys.specs
+  linker:
+    - script: ./boot.ld
